@@ -1,58 +1,47 @@
 import Docker from "dockerode";
-import net from "net";
 import { appendLog } from "./logger.js";
 
 const docker = new Docker({ socketPath: process.env.DOCKER_SOCKET ?? "/var/run/docker.sock" });
 
-/**
- * Find an available host port in the ephemeral range.
- */
-function getFreePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.listen(0, "0.0.0.0", () => {
-      const port = (srv.address() as net.AddressInfo).port;
-      srv.close(() => resolve(port));
-    });
-    srv.on("error", reject);
-  });
-}
+// The internal port Railpack Node.js apps listen on by default.
+const CONTAINER_PORT = 3000;
+
+// Docker Compose prefixes network names with the project name.
+// COMPOSE_PROJECT_NAME defaults to the directory name, but we set it
+// explicitly in docker-compose.yml so this is always predictable.
+const DOCKER_NETWORK = process.env.DOCKER_NETWORK ?? "brimble_fullstack_brimble_net";
 
 /**
- * Start a container from the built image, attached to `brimble_net`.
- * Returns the container ID and the host port it is bound to.
+ * Start a container from the built image joined to the shared bridge
+ * network so Caddy can reach it by container name.
  *
- * We expose port 3000 inside the container — Railpack's Node.js
- * build template starts the app on PORT=3000 by default.
+ * Returns the container ID and the internal port (always 3000).
+ * Caddy dials `<containerName>:3000` directly — no host-port binding needed.
  */
 export async function startContainer(
   deploymentId: string,
   imageTag: string
-): Promise<{ containerId: string; containerPort: number }> {
-  const hostPort = await getFreePort();
-  const containerInternalPort = 3000;
+): Promise<{ containerId: string; containerName: string; containerPort: number }> {
+  const containerName = `brimble-${deploymentId.slice(0, 8)}`;
 
-  await appendLog(deploymentId, "deploy", `Starting container from image ${imageTag} on host port ${hostPort}`);
+  await appendLog(deploymentId, "deploy", `Starting container ${containerName} from image ${imageTag}`);
 
   const container = await docker.createContainer({
     Image: imageTag,
-    name: `brimble-${deploymentId.slice(0, 8)}`,
-    Env: [`PORT=${containerInternalPort}`],
-    ExposedPorts: { [`${containerInternalPort}/tcp`]: {} },
+    name: containerName,
+    Env: [`PORT=${CONTAINER_PORT}`],
+    ExposedPorts: { [`${CONTAINER_PORT}/tcp`]: {} },
     HostConfig: {
-      PortBindings: {
-        [`${containerInternalPort}/tcp`]: [{ HostPort: String(hostPort) }],
-      },
-      NetworkMode: "brimble_fullstack_brimble_net",
+      NetworkMode: DOCKER_NETWORK,
       RestartPolicy: { Name: "unless-stopped" },
     },
   });
 
   await container.start();
 
-  await appendLog(deploymentId, "deploy", `Container ${container.id.slice(0, 12)} started`);
+  await appendLog(deploymentId, "deploy", `Container ${container.id.slice(0, 12)} started on ${DOCKER_NETWORK}`);
 
-  return { containerId: container.id, containerPort: hostPort };
+  return { containerId: container.id, containerName, containerPort: CONTAINER_PORT };
 }
 
 /**

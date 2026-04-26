@@ -1,0 +1,28 @@
+{
+	# Admin API — only reachable inside the Docker network
+	admin 0.0.0.0:2019
+	# Disable automatic HTTPS for local development
+	auto_https off
+}
+
+:80 {
+	# ── Frontend static files ──────────────────────────────────────
+	# Serve the Vite build output. SPA fallback so client-side
+	# routing works on refresh.
+	handle /api/* {
+		reverse_proxy api:3000 {
+			# Disable buffering so SSE frames reach the browser immediately
+			flush_interval -1
+		}
+	}
+
+	# Deployed apps are routed dynamically by the API via the admin API.
+	# Those routes are POST-ed at runtime and take precedence because
+	# Caddy matches more-specific routes first.
+
+	handle {
+		root * /srv/www
+		try_files {path} /index.html
+		file_server
+	}
+}

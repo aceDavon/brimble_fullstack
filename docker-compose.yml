@@ -1,7 +1,10 @@
 version: "3.9"
 
+name: brimble
+
 networks:
   brimble_net:
+    name: brimble_brimble_net
     driver: bridge
 
 volumes:
@@ -47,6 +50,7 @@ services:
       DOCKER_HOST: unix:///var/run/docker.sock
       BUILDKIT_HOST: docker-container://buildkit
       CADDY_ADMIN_URL: http://caddy:2019
+      DOCKER_NETWORK: brimble_brimble_net
       PUBLIC_BASE_URL: http://localhost
       PORT: "3000"
     volumes:
@@ -66,8 +70,8 @@ services:
 
   caddy:
     build:
-      context: ./caddy
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: caddy/Dockerfile
     restart: unless-stopped
     ports:
       - "80:80"

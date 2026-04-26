@@ -72,10 +72,10 @@ export async function runPipeline(
     }
 
     // ── 4. Start container ────────────────────────────────────────────────────
-    const { containerId, containerPort } = await startContainer(deploymentId, imageTag);
+    const { containerId, containerName, containerPort } = await startContainer(deploymentId, imageTag);
 
     // ── 5. Register Caddy route ───────────────────────────────────────────────
-    const caddyRoutePath = await addCaddyRoute(deploymentId, containerPort);
+    const caddyRoutePath = await addCaddyRoute(deploymentId, containerName, containerPort);
 
     // ── 6. Mark running ───────────────────────────────────────────────────────
     await setStatus(deploymentId, "running", { containerId, containerPort, caddyRoutePath });

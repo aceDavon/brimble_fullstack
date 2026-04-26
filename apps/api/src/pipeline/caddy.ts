@@ -12,7 +12,8 @@ const CADDY_ADMIN = process.env.CADDY_ADMIN_URL ?? "http://caddy:2019";
  */
 export async function addCaddyRoute(
   deploymentId: string,
-  hostPort: number
+  containerName: string,
+  containerPort: number
 ): Promise<string> {
   const routePath = `/deploy/${deploymentId}`;
 
@@ -35,7 +36,9 @@ export async function addCaddyRoute(
             handle: [
               {
                 handler: "reverse_proxy",
-                upstreams: [{ dial: `host.docker.internal:${hostPort}` }],
+                // Caddy and the deployed container are on the same Docker
+                // bridge network — dial by container name, no host port needed.
+                upstreams: [{ dial: `${containerName}:${containerPort}` }],
               },
             ],
           },
