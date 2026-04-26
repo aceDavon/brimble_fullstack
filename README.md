@@ -7,13 +7,39 @@ A one-page deployment pipeline. Submit a Git URL or a project archive; the syste
 ```bash
 git clone <this-repo>
 cd brimble_fullStack
-cp .env.example .env
 docker compose up --build
 ```
 
-Open `http://localhost`. No other setup required.
+Open **http://localhost** in your browser. No other setup required.
 
 > **Prerequisites:** Docker with BuildKit support (Docker Desktop 4+ or Docker Engine 23+). Nothing else.
+
+---
+
+## Using the UI
+
+Navigate to **http://localhost** to access the deployment dashboard.
+
+### Deploying from a Git URL
+1. Select **Git** as the source type.
+2. Paste a public Git clone URL (e.g. `https://github.com/aceDavon/sample_app_node.git`).
+3. Click **Deploy** — the build log streams in real time on the same page.
+
+### Deploying by file upload
+1. Select **Upload** as the source type.
+2. Choose your archive file. **Accepted formats:**
+   - `.tar.gz` / `.tgz` — **recommended.** Create one with:
+     ```bash
+     tar -czf app.tar.gz -C /path/to/your-app .
+     ```
+   - `.zip` — supported, but **avoid macOS Finder-generated zips** (they include a `__MACOSX/` folder and nest everything inside a subdirectory, which causes Railpack to fail to detect the project).  
+     If you must use a zip, create it from the terminal:
+     ```bash
+     cd /path/to/your-app && zip -r ../app.zip . -x "__MACOSX/*" -x "*.DS_Store"
+     ```
+3. Click **Deploy**.
+
+> **Note:** Railpack auto-detects the language/framework from the project files. Make sure your archive contains a recognisable project root (e.g. `package.json` for Node, `go.mod` for Go, `requirements.txt` for Python, etc.) at the **top level** of the archive — not nested inside a subdirectory.
 
 ---
 
