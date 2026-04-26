@@ -201,8 +201,3 @@ To deploy it via the UI: either point to the repo URL, or `tar -czf sample.tar.g
 | README | ~0.5 h |
 | **Total** | **~9 h** |
 
----
-
-## Brimble deploy + feedback
-
-*[To be filled in after deploying to Brimble and writing up the experience.]*
