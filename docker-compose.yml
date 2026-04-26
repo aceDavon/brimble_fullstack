@@ -1,0 +1,79 @@
+version: "3.9"
+
+networks:
+  brimble_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+  buildkit_cache:
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: brimble
+      POSTGRES_PASSWORD: brimble
+      POSTGRES_DB: brimble
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - brimble_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U brimble"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  buildkit:
+    image: moby/buildkit:latest
+    restart: unless-stopped
+    privileged: true
+    networks:
+      - brimble_net
+    volumes:
+      - buildkit_cache:/var/lib/buildkit
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://brimble:brimble@db:5432/brimble
+      DOCKER_HOST: unix:///var/run/docker.sock
+      BUILDKIT_HOST: docker-container://buildkit
+      CADDY_ADMIN_URL: http://caddy:2019
+      PUBLIC_BASE_URL: http://localhost
+      PORT: "3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./uploads:/app/uploads
+    networks:
+      - brimble_net
+    depends_on:
+      db:
+        condition: service_healthy
+      buildkit:
+        condition: service_started
+      caddy:
+        condition: service_started
+    expose:
+      - "3000"
+
+  caddy:
+    build:
+      context: ./caddy
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "2019:2019"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - brimble_net
