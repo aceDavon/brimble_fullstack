@@ -30,11 +30,15 @@ COPY drizzle ./drizzle
 RUN npm run build
 
 # ─── runtime ─────────────────────────────────────────────────────────────────
-FROM node:22-alpine AS runtime
+# Use Debian-slim (glibc) so that railpack's dynamically-downloaded mise binary
+# (which is glibc-linked) can actually execute. Alpine's musl libc is not
+# compatible with glibc ELFs regardless of gcompat/libc6-compat shims.
+FROM node:22-slim AS runtime
 WORKDIR /app
 
-# Keep git available for cloning repos submitted by users
-RUN apk add --no-cache git
+# Keep git available for cloning repos submitted by users.
+# ca-certificates is required so railpack can download mise over TLS at runtime.
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Copy Railpack binary from base stage
 COPY --from=base /usr/local/bin/railpack /usr/local/bin/railpack
